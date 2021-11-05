@@ -12,7 +12,7 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
         let page = await props.document.getPage(props.pageNumber);
         let canvas = canvasRef.current!;
 
-        let viewport = page.getViewport({ scale: 1.2 });
+        let viewport = page.getViewport({ scale: 1 });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
@@ -21,15 +21,20 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
             canvasContext: canvas.getContext("2d")!,
         }).promise;
 
-        // let textContent = await page.getTextContent();
-        // let textLayer = textLayerRef.current!;
+        let textContent = await page.getTextContent();
+        let textLayer = textLayerRef.current!;
 
-        // pdf.renderTextLayer({
-        //     viewport: viewport,
-        //     textContent,
-        //     container: textLayer,
-        //     textDivs: [],
-        // });
+        textLayer.style.left = canvas.offsetLeft + "px";
+        textLayer.style.top = canvas.offsetTop - 2 + "px";
+        textLayer.style.height = canvas.offsetHeight + "px";
+        textLayer.style.width = canvas.offsetWidth + "px";
+
+        pdf.renderTextLayer({
+            viewport: viewport,
+            textContent,
+            container: textLayer,
+            textDivs: [],
+        });
     }
 
     useEffect(() => {
@@ -37,9 +42,9 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
     }, []);
 
     return (
-        <div className="relative">
-            <div className="absolute top-0 left-0" ref={textLayerRef}></div>
+        <div className="relative border">
             <canvas ref={canvasRef}></canvas>
+            <div className="text-layer" ref={textLayerRef}></div>
         </div>
     );
 }
@@ -49,6 +54,7 @@ export default function App() {
 
     async function loadPdf() {
         // https://mozilla.github.io/pdf.js/examples/
+        // https://stackoverflow.com/questions/33063213/pdf-js-with-text-selection
         let res = await pdf.getDocument("/multiboot.pdf").promise;
         setDocument(res);
     }

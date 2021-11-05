@@ -4,5 +4,25 @@
 @tailwind utilities;
 
 body, html, #root {
-  height: 100%;
+    height: 100%;
+}
+
+.text-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    text-align: initial;
+    overflow: hidden;
+    list-style: 1;
+    opacity: 0.2;
+}
+
+.text-layer > * {
+    position: absolute;
+    color: transparent;
+    cursor: text;
+    transform-origin: 0% 0%;
+    white-space: pre;
 }
