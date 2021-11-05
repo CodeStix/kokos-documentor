@@ -115,8 +115,8 @@ function PdfPage(props: {
     }, [props.scale, visible]);
 
     return (
-        <div className="relative border">
-            <canvas width={600} height={800} ref={canvasRef}></canvas>
+        <div className="relative border bg-white">
+            <canvas width={740} height={957} ref={canvasRef}></canvas>
             <div className="text-layer" ref={textLayerRef}></div>
         </div>
     );
@@ -135,6 +135,7 @@ function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocum
     async function getPageInfo() {
         let destination = (await props.document.getDestination(String(props.item.dest))) as RefProxy[];
         if (!destination || destination.length <= 0) return;
+        await new Promise((res) => requestAnimationFrame(res));
         let pageIndex = await props.document.getPageIndex(destination[0]);
         setPageNumber(pageIndex + 1);
     }
@@ -190,22 +191,31 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem) 
     );
 }
 
+// https://mozilla.github.io/pdf.js/examples/
+// https://stackoverflow.com/questions/33063213/pdf-js-with-text-selection
+
 export default function App() {
+    const [documentName, setDocumentName] = useState("/amd64volume2.pdf");
     const [document, setDocument] = useState<PDFDocumentProxy>();
     const [pageIndex, setPageIndex] = useState(0);
-    const [scale, setScale] = useState(1);
+    const [scale, setScale] = useState(1.2);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    async function loadPdf() {
-        // https://mozilla.github.io/pdf.js/examples/
-        // https://stackoverflow.com/questions/33063213/pdf-js-with-text-selection
-        let res = await pdf.getDocument("/amd64volume2.pdf").promise;
+    async function loadPdf(path: string) {
+        console.log("loading pdf from", path);
+        document?.cleanup();
+        setDocument(undefined);
+
+        let res = await pdf.getDocument(path).promise;
+        console.log("loaded pdf from", path);
         setDocument(res);
     }
 
     useEffect(() => {
-        loadPdf();
+        if (documentName) loadPdf(documentName);
+    }, [documentName]);
 
+    useEffect(() => {
         function onScroll(ev: WheelEvent) {
             if (ev.ctrlKey) {
                 ev.preventDefault();
@@ -224,48 +234,68 @@ export default function App() {
         };
     }, []);
 
-    if (!document) {
-        return <p>loading document...</p>;
-    }
-
     let pages = [];
-    for (let i = 0; i < document.numPages; i++) {
-        pages.push(
-            <PdfPage
-                onExitBottom={() => {
-                    // console.log("page", pageIndex + i + 1, "exited bottom");
-                }}
-                onExitTop={() => {
-                    setPageIndex((pageIndex) => pageIndex + 1);
-                    // console.log("page", pageIndex + i + 1, "exited top");
-                }}
-                onEnterBottom={() => {
-                    // console.log("page", pageIndex + i + 1, "entered bottom");
-                }}
-                onEnterTop={() => {
-                    setPageIndex((pageIndex) => pageIndex - 1);
-                    // console.log("page", pageIndex + i + 1, "entered top");
-                }}
-                scale={scale}
-                key={i}
-                document={document}
-                pageNumber={i + 1}
-            />
-        );
+    if (document) {
+        for (let i = 0; i < document.numPages; i++) {
+            pages.push(
+                <PdfPage
+                    onExitBottom={() => {
+                        // console.log("page", pageIndex + i + 1, "exited bottom");
+                    }}
+                    onExitTop={() => {
+                        setPageIndex((pageIndex) => pageIndex + 1);
+                        // console.log("page", pageIndex + i + 1, "exited top");
+                    }}
+                    onEnterBottom={() => {
+                        // console.log("page", pageIndex + i + 1, "entered bottom");
+                    }}
+                    onEnterTop={() => {
+                        setPageIndex((pageIndex) => pageIndex - 1);
+                        // console.log("page", pageIndex + i + 1, "entered top");
+                    }}
+                    scale={scale}
+                    key={i}
+                    document={document}
+                    pageNumber={i + 1}
+                />
+            );
+        }
     }
 
     return (
-        <div>
-            <div className="flex flex-row items-start justify-start bg-gray-700 min-h-full relative">
-                <div className="sticky top-0 max-h-screen flex flex-col">
-                    <nav className="shadow-md">
-                        <div className="px-3 py-3 ">
-                            <div className="text-xl leading-4 text-green-300 font-bold font-mono">kokos</div>
-                            <div className="text-xs text-green-500">
-                                documentor ({pageIndex}/{document.numPages} pages)
-                            </div>
+        <div className="flex flex-row items-start justify-start bg-gray-700 min-h-full relative">
+            <div className="sticky top-0 max-h-screen flex flex-col">
+                <nav className="shadow-md flex p-3">
+                    <div>
+                        <div className="text-xl leading-4 text-green-300 font-bold font-mono">cocos</div>
+                        <div className="text-xs text-green-500">
+                            {document ? (
+                                <span>
+                                    documentor ({pageIndex}/{document.numPages} pages, {scale})
+                                </span>
+                            ) : (
+                                <span>
+                                    Loading <code>{documentName}</code>...
+                                </span>
+                            )}
                         </div>
-                    </nav>
+                    </div>
+                    <select
+                        className="flex-grow ml-6 bg-transparent text-white border-green-500 border"
+                        value={documentName}
+                        onChange={(ev) => {
+                            setPageIndex(0);
+                            setDocumentName(ev.target.value);
+                        }}>
+                        <option className="text-black" value="/amd64volume2.pdf">
+                            AMD Volume 2
+                        </option>
+                        <option className="text-black" value="/multiboot.pdf">
+                            Multiboot Specification
+                        </option>
+                    </select>
+                </nav>
+                {document && (
                     <div className=" overflow-y-auto pb-10">
                         <PdfTree
                             document={document}
@@ -279,11 +309,13 @@ export default function App() {
                             }}
                         />
                     </div>
-                </div>
-                <div className="max-w-5xl bg-white flex-grow-0 flex-shrink" ref={containerRef}>
+                )}
+            </div>
+            {document && (
+                <div className="max-w-5xl flex-grow-0 flex-shrink" ref={containerRef}>
                     {pages}
                 </div>
-            </div>
+            )}
         </div>
     );
 }
