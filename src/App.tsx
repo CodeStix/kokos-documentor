@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import * as pdf from "pdfjs-dist";
 import { PDFDocumentProxy, PDFPageProxy, RefProxy } from "pdfjs-dist/types/src/display/api";
 import createState from "zustand";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 
 pdf.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
 
@@ -72,15 +74,19 @@ function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocum
     }, []);
 
     return (
-        <div style={{ marginLeft: props.level * 5 + "px" }}>
+        <div>
             <p
-                className="flex flex-row flex-wrap text-white cursor-pointer hover:bg-blue-500 px-2 py-0.5 border-b border-gray-900 border-dotted"
+                className="flex flex-row flex-wrap text-white cursor-pointer hover:bg-blue-500 hover:border-transparent px-2 py-0.5 border-b border-gray-900 border-dotted hover:rounded-md rounded-none"
                 onClick={() => {
                     setShown(!shown);
                     props.onClick(props.item);
                 }}
-                style={{ fontWeight: props.level === 0 ? "bold" : undefined }}>
-                <span className="w-5">{props.item.items.length > 0 && "<"}</span>
+                style={{ fontWeight: props.level === 0 ? "bold" : undefined, marginLeft: props.level * 10 + "px" }}>
+                <span className="w-5">
+                    {props.item.items.length > 0 && (
+                        <FontAwesomeIcon icon={faChevronDown} style={{ transform: shown ? "rotate(0deg)" : "rotate(-90deg)", transition: "100ms" }} />
+                    )}
+                </span>
                 <span className="max-w-xs mr-1">{props.item.title}</span>
                 {pageNumber != undefined && <span className="ml-auto">{pageNumber}</span>}
             </p>
@@ -121,7 +127,7 @@ export default function App() {
     async function loadPdf() {
         // https://mozilla.github.io/pdf.js/examples/
         // https://stackoverflow.com/questions/33063213/pdf-js-with-text-selection
-        let res = await pdf.getDocument("/multiboot.pdf").promise;
+        let res = await pdf.getDocument("/amd64volume2.pdf").promise;
         setDocument(res);
     }
 
@@ -141,7 +147,7 @@ export default function App() {
                     let destination = (await document.getDestination(String(item.dest))) as RefProxy[];
                     if (!destination || destination.length <= 0) return;
                     let newPageIndex = await document.getPageIndex(destination[0]);
-                    console.log("change index");
+                    console.log("change index", destination);
                     setPageIndex(newPageIndex);
                 }}
             />
