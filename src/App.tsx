@@ -178,7 +178,7 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem) 
     }, []);
 
     return (
-        <div className="sticky top-0 p-3 max-h-screen overflow-y-auto">
+        <div className="p-3  overflow-y-auto">
             {items.map((item, i) => (
                 <PdfChildTree document={props.document} onClick={props.onClick} key={i} level={0} item={item} />
             ))}
@@ -225,38 +225,50 @@ export default function App() {
     }
 
     return (
-        <div className="flex flex-row items-start justify-start bg-gray-700 min-h-full relative">
-            <PdfTree
-                document={document}
-                onClick={async (item) => {
-                    let destination = (await document.getDestination(String(item.dest))) as RefProxy[];
-                    if (!destination || destination.length <= 0) return;
-                    let newPageIndex = await document.getPageIndex(destination[0]);
-                    console.log("change index", destination);
-                    setPageIndex(newPageIndex);
-                }}
-            />
-            <div className="max-w-5xl bg-white flex-grow-0 flex-shrink" ref={containerRef}>
-                {new Array(Math.min(document.numPages, 3)).fill(0).map((_, i) => (
-                    <PdfPage
-                        onExitBottom={() => {
-                            console.log("page", pageIndex + i + 1, "exited bottom");
-                        }}
-                        onExitTop={() => {
-                            console.log("page", pageIndex + i + 1, "exited top");
-                        }}
-                        onEnterBottom={() => {
-                            console.log("page", pageIndex + i + 1, "entered bottom");
-                        }}
-                        onEnterTop={() => {
-                            console.log("page", pageIndex + i + 1, "entered top");
-                        }}
-                        scale={scale}
-                        key={pageIndex + i + 1}
-                        document={document}
-                        pageNumber={pageIndex + i + 1}
-                    />
-                ))}
+        <div>
+            <div className="flex flex-row items-start justify-start bg-gray-700 min-h-full relative">
+                <div className="sticky top-0 max-h-screen flex flex-col">
+                    <nav className="shadow-md">
+                        <div className="px-3 py-3 ">
+                            <div className="text-xl leading-4 text-green-300 font-bold font-mono">kokos</div>
+                            <div className="text-xs text-green-500">documentor</div>
+                        </div>
+                    </nav>
+                    <div className=" overflow-y-auto pb-10">
+                        <PdfTree
+                            document={document}
+                            onClick={async (item) => {
+                                let destination = (await document.getDestination(String(item.dest))) as RefProxy[];
+                                if (!destination || destination.length <= 0) return;
+                                let newPageIndex = await document.getPageIndex(destination[0]);
+                                console.log("change index", destination);
+                                setPageIndex(newPageIndex);
+                            }}
+                        />
+                    </div>
+                </div>
+                <div className="max-w-5xl bg-white flex-grow-0 flex-shrink" ref={containerRef}>
+                    {new Array(Math.min(document.numPages, 10)).fill(0).map((_, i) => (
+                        <PdfPage
+                            onExitBottom={() => {
+                                console.log("page", pageIndex + i + 1, "exited bottom");
+                            }}
+                            onExitTop={() => {
+                                console.log("page", pageIndex + i + 1, "exited top");
+                            }}
+                            onEnterBottom={() => {
+                                console.log("page", pageIndex + i + 1, "entered bottom");
+                            }}
+                            onEnterTop={() => {
+                                console.log("page", pageIndex + i + 1, "entered top");
+                            }}
+                            scale={scale}
+                            key={pageIndex + i + 1}
+                            document={document}
+                            pageNumber={pageIndex + i + 1}
+                        />
+                    ))}
+                </div>
             </div>
         </div>
     );
