@@ -7,12 +7,20 @@ import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 
 pdf.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
 
-function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number; scale: number }) {
+function PdfPage(props: {
+    document: PDFDocumentProxy;
+    pageNumber: number;
+    scale: number;
+    onExitTop: () => void;
+    onExitBottom: () => void;
+    onEnterTop: () => void;
+    onEnterBottom: () => void;
+}) {
     const textLayerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const tasks = useRef<{ renderTask: any; renderTextTask: any }>({ renderTask: null, renderTextTask: null });
 
-    async function loadPage() {
+    async function renderPage() {
         let page = await props.document.getPage(props.pageNumber);
         let canvas = canvasRef.current!;
 
@@ -54,7 +62,43 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number; scale:
     }
 
     useEffect(() => {
-        loadPage();
+        let wasVisible = true;
+        function onGlobalScroll() {
+            let canvas = canvasRef.current!;
+            let rect = canvas.getBoundingClientRect();
+            let screenHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
+            if (rect.bottom < 0 || rect.top >= screenHeight) {
+                // Not visible
+                if (wasVisible) {
+                    if (rect.bottom < 0) {
+                        props.onExitBottom();
+                    } else {
+                        props.onExitTop();
+                    }
+                    wasVisible = false;
+                }
+            } else {
+                // Visible on screen
+                if (!wasVisible) {
+                    if (rect.top < 0) {
+                        props.onEnterTop();
+                    } else {
+                        props.onEnterBottom();
+                    }
+                    wasVisible = true;
+                }
+            }
+        }
+
+        window.addEventListener("scroll", onGlobalScroll);
+
+        return () => {
+            window.removeEventListener("scroll", onGlobalScroll);
+        };
+    }, []);
+
+    useEffect(() => {
+        renderPage();
 
         return () => {
             if (tasks.current.renderTask) {
@@ -146,6 +190,7 @@ export default function App() {
     const [document, setDocument] = useState<PDFDocumentProxy>();
     const [pageIndex, setPageIndex] = useState(0);
     const [scale, setScale] = useState(1);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     async function loadPdf() {
         // https://mozilla.github.io/pdf.js/examples/
@@ -191,9 +236,26 @@ export default function App() {
                     setPageIndex(newPageIndex);
                 }}
             />
-            <div className="max-w-5xl bg-white flex-grow-0 flex-shrink">
-                {new Array(Math.min(document.numPages, 2)).fill(0).map((_, i) => (
-                    <PdfPage scale={scale} key={pageIndex + i + 1} document={document} pageNumber={pageIndex + i + 1} />
+            <div className="max-w-5xl bg-white flex-grow-0 flex-shrink" ref={containerRef}>
+                {new Array(Math.min(document.numPages, 3)).fill(0).map((_, i) => (
+                    <PdfPage
+                        onExitBottom={() => {
+                            console.log("page", pageIndex + i + 1, "exited bottom");
+                        }}
+                        onExitTop={() => {
+                            console.log("page", pageIndex + i + 1, "exited top");
+                        }}
+                        onEnterBottom={() => {
+                            console.log("page", pageIndex + i + 1, "entered bottom");
+                        }}
+                        onEnterTop={() => {
+                            console.log("page", pageIndex + i + 1, "entered top");
+                        }}
+                        scale={scale}
+                        key={pageIndex + i + 1}
+                        document={document}
+                        pageNumber={pageIndex + i + 1}
+                    />
                 ))}
             </div>
         </div>
