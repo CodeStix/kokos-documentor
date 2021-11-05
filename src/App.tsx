@@ -7,22 +7,27 @@ import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 
 pdf.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
 
-function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
+function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number; scale: number }) {
     const textLayerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const tasks = useRef<{ renderTask: any; renderTextTask: any }>({ renderTask: null, renderTextTask: null });
 
     async function loadPage() {
         let page = await props.document.getPage(props.pageNumber);
         let canvas = canvasRef.current!;
 
-        let viewport = page.getViewport({ scale: 1.2 });
+        let viewport = page.getViewport({ scale: props.scale });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
-        await page.render({
+        let renderTask = page.render({
             viewport,
             canvasContext: canvas.getContext("2d")!,
-        }).promise;
+        });
+
+        tasks.current.renderTask = renderTask;
+        await renderTask.promise;
+        tasks.current.renderTask = null;
 
         let textContent = await page.getTextContent();
         let textLayer = textLayerRef.current!;
@@ -32,17 +37,34 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
         textLayer.style.height = canvas.offsetHeight + "px";
         textLayer.style.width = canvas.offsetWidth + "px";
 
-        pdf.renderTextLayer({
+        while (textLayer.firstChild) {
+            textLayer.removeChild(textLayer.firstChild);
+        }
+
+        let renderTextTask = pdf.renderTextLayer({
             viewport: viewport,
             textContent,
             container: textLayer,
             textDivs: [],
         });
+
+        tasks.current.renderTextTask = renderTextTask;
+        await renderTextTask.promise;
+        tasks.current.renderTextTask = null;
     }
 
     useEffect(() => {
         loadPage();
-    }, []);
+
+        return () => {
+            if (tasks.current.renderTask) {
+                tasks.current.renderTask.cancel();
+            }
+            if (tasks.current.renderTextTask) {
+                tasks.current.renderTextTask.cancel();
+            }
+        };
+    }, [props.scale]);
 
     return (
         <div className="relative border">
@@ -123,6 +145,7 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem) 
 export default function App() {
     const [document, setDocument] = useState<PDFDocumentProxy>();
     const [pageIndex, setPageIndex] = useState(0);
+    const [scale, setScale] = useState(1);
 
     async function loadPdf() {
         // https://mozilla.github.io/pdf.js/examples/
@@ -133,6 +156,23 @@ export default function App() {
 
     useEffect(() => {
         loadPdf();
+
+        function onScroll(ev: WheelEvent) {
+            if (ev.ctrlKey) {
+                ev.preventDefault();
+                if (ev.deltaY < 0) {
+                    setScale((scale) => scale * 1.05);
+                } else {
+                    setScale((scale) => scale * 0.95);
+                }
+            }
+        }
+
+        window.addEventListener("wheel", onScroll, { passive: false });
+
+        return () => {
+            window.removeEventListener("wheel", onScroll);
+        };
     }, []);
 
     if (!document) {
@@ -153,7 +193,7 @@ export default function App() {
             />
             <div className="max-w-5xl bg-white flex-grow-0 flex-shrink">
                 {new Array(Math.min(document.numPages, 2)).fill(0).map((_, i) => (
-                    <PdfPage key={pageIndex + i + 1} document={document} pageNumber={pageIndex + i + 1} />
+                    <PdfPage scale={scale} key={pageIndex + i + 1} document={document} pageNumber={pageIndex + i + 1} />
                 ))}
             </div>
         </div>
