@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as pdf from "pdfjs-dist";
-import { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist/types/src/display/api";
+import { PDFDocumentProxy, PDFPageProxy, RefProxy } from "pdfjs-dist/types/src/display/api";
+import createState from "zustand";
 
 pdf.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
 
@@ -49,8 +50,69 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
     );
 }
 
+interface TreeItem {
+    items: TreeItem[];
+    title: string;
+    dest: string | null | any[];
+}
+
+function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocumentProxy; onClick: (item: TreeItem) => void }) {
+    const [pageNumber, setPageNumber] = useState<number>();
+
+    async function getPageInfo() {
+        let destination = (await props.document.getDestination(String(props.item.dest))) as RefProxy[];
+        if (!destination || destination.length <= 0) return;
+        console.log("dest", destination[0]);
+
+        let pageIndex = await props.document.getPageIndex(destination[0]);
+        setPageNumber(pageIndex + 1);
+    }
+
+    useEffect(() => {
+        getPageInfo();
+    }, []);
+
+    return (
+        <div style={{ marginLeft: props.level * 10 + "px" }}>
+            <p
+                className="flex flex-row flex-wrap text-white cursor-pointer hover:bg-blue-500 px-1"
+                onClick={() => props.onClick(props.item)}
+                style={{ fontWeight: props.level === 0 ? "bold" : undefined }}>
+                <span className="max-w-xs">{props.item.title}</span>
+                {pageNumber != undefined && <span className="ml-auto">{pageNumber}</span>}
+            </p>
+            {props.item.items.length > 0 &&
+                props.item.items.map((item, i) => (
+                    <PdfChildTree document={props.document} onClick={props.onClick} key={i} level={props.level + 1} item={item} />
+                ))}
+        </div>
+    );
+}
+
+function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem) => void }) {
+    const [items, setItems] = useState<TreeItem[]>([]);
+
+    async function loadTree() {
+        let root = await props.document.getOutline();
+        setItems(root);
+    }
+
+    useEffect(() => {
+        loadTree();
+    }, []);
+
+    return (
+        <div className="sticky top-0 p-3 max-h-screen overflow-y-auto">
+            {items.map((item, i) => (
+                <PdfChildTree document={props.document} onClick={props.onClick} key={i} level={0} item={item} />
+            ))}
+        </div>
+    );
+}
+
 export default function App() {
     const [document, setDocument] = useState<PDFDocumentProxy>();
+    const [pageIndex, setPageIndex] = useState(0);
 
     async function loadPdf() {
         // https://mozilla.github.io/pdf.js/examples/
@@ -68,13 +130,17 @@ export default function App() {
     }
 
     return (
-        <div className="flex flex-row justify-center bg-gray-600 min-h-full">
+        <div className="flex flex-row items-start justify-start bg-gray-700 min-h-full relative">
+            <PdfTree document={document} onClick={async (item) => {}} />
             <div className="max-w-5xl bg-white w-full">
-                <PdfPage document={document} pageNumber={1} />
-                <PdfPage document={document} pageNumber={2} />
-                <PdfPage document={document} pageNumber={3} />
-                <PdfPage document={document} pageNumber={4} />
                 <pre>page count = {document.numPages}</pre>
+                {new Array(Math.min(document.numPages, 10)).fill(0).map((_, i) => (
+                    <PdfPage key={i} document={document} pageNumber={i + 1} />
+                ))}
+
+                {/* <PdfPage document={document} pageNumber={2} />
+                <PdfPage document={document} pageNumber={3} />
+                <PdfPage document={document} pageNumber={4} /> */}
             </div>
         </div>
     );
