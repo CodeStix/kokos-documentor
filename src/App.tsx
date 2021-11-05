@@ -13,7 +13,7 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
         let page = await props.document.getPage(props.pageNumber);
         let canvas = canvasRef.current!;
 
-        let viewport = page.getViewport({ scale: 1 });
+        let viewport = page.getViewport({ scale: 1.2 });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
@@ -44,7 +44,7 @@ function PdfPage(props: { document: PDFDocumentProxy; pageNumber: number }) {
 
     return (
         <div className="relative border">
-            <canvas ref={canvasRef}></canvas>
+            <canvas width={600} height={800} ref={canvasRef}></canvas>
             <div className="text-layer" ref={textLayerRef}></div>
         </div>
     );
@@ -57,13 +57,12 @@ interface TreeItem {
 }
 
 function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocumentProxy; onClick: (item: TreeItem) => void }) {
+    const [shown, setShown] = useState(false);
     const [pageNumber, setPageNumber] = useState<number>();
 
     async function getPageInfo() {
         let destination = (await props.document.getDestination(String(props.item.dest))) as RefProxy[];
         if (!destination || destination.length <= 0) return;
-        console.log("dest", destination[0]);
-
         let pageIndex = await props.document.getPageIndex(destination[0]);
         setPageNumber(pageIndex + 1);
     }
@@ -73,15 +72,20 @@ function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocum
     }, []);
 
     return (
-        <div style={{ marginLeft: props.level * 10 + "px" }}>
+        <div style={{ marginLeft: props.level * 5 + "px" }}>
             <p
-                className="flex flex-row flex-wrap text-white cursor-pointer hover:bg-blue-500 px-1"
-                onClick={() => props.onClick(props.item)}
+                className="flex flex-row flex-wrap text-white cursor-pointer hover:bg-blue-500 px-2 py-0.5 border-b border-gray-900 border-dotted"
+                onClick={() => {
+                    setShown(!shown);
+                    props.onClick(props.item);
+                }}
                 style={{ fontWeight: props.level === 0 ? "bold" : undefined }}>
-                <span className="max-w-xs">{props.item.title}</span>
+                <span className="w-5">{props.item.items.length > 0 && "<"}</span>
+                <span className="max-w-xs mr-1">{props.item.title}</span>
                 {pageNumber != undefined && <span className="ml-auto">{pageNumber}</span>}
             </p>
-            {props.item.items.length > 0 &&
+            {shown &&
+                props.item.items.length > 0 &&
                 props.item.items.map((item, i) => (
                     <PdfChildTree document={props.document} onClick={props.onClick} key={i} level={props.level + 1} item={item} />
                 ))}
@@ -131,16 +135,20 @@ export default function App() {
 
     return (
         <div className="flex flex-row items-start justify-start bg-gray-700 min-h-full relative">
-            <PdfTree document={document} onClick={async (item) => {}} />
-            <div className="max-w-5xl bg-white w-full">
-                <pre>page count = {document.numPages}</pre>
-                {new Array(Math.min(document.numPages, 10)).fill(0).map((_, i) => (
-                    <PdfPage key={i} document={document} pageNumber={i + 1} />
+            <PdfTree
+                document={document}
+                onClick={async (item) => {
+                    let destination = (await document.getDestination(String(item.dest))) as RefProxy[];
+                    if (!destination || destination.length <= 0) return;
+                    let newPageIndex = await document.getPageIndex(destination[0]);
+                    console.log("change index");
+                    setPageIndex(newPageIndex);
+                }}
+            />
+            <div className="max-w-5xl bg-white flex-grow-0 flex-shrink">
+                {new Array(Math.min(document.numPages, 2)).fill(0).map((_, i) => (
+                    <PdfPage key={pageIndex + i + 1} document={document} pageNumber={pageIndex + i + 1} />
                 ))}
-
-                {/* <PdfPage document={document} pageNumber={2} />
-                <PdfPage document={document} pageNumber={3} />
-                <PdfPage document={document} pageNumber={4} /> */}
             </div>
         </div>
     );
