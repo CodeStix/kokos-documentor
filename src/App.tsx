@@ -16,6 +16,7 @@ function PdfPage(props: {
     onEnterTop: () => void;
     onEnterBottom: () => void;
 }) {
+    const [visible, setVisible] = useState(props.pageNumber < 4);
     const textLayerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const tasks = useRef<{ renderTask: any; renderTextTask: any }>({ renderTask: null, renderTextTask: null });
@@ -62,7 +63,7 @@ function PdfPage(props: {
     }
 
     useEffect(() => {
-        let wasVisible = true;
+        let wasVisible = props.pageNumber < 4;
         function onGlobalScroll() {
             let canvas = canvasRef.current!;
             let rect = canvas.getBoundingClientRect();
@@ -71,11 +72,12 @@ function PdfPage(props: {
                 // Not visible
                 if (wasVisible) {
                     if (rect.bottom < 0) {
-                        props.onExitBottom();
-                    } else {
                         props.onExitTop();
+                    } else {
+                        props.onExitBottom();
                     }
                     wasVisible = false;
+                    setVisible(false);
                 }
             } else {
                 // Visible on screen
@@ -86,11 +88,13 @@ function PdfPage(props: {
                         props.onEnterBottom();
                     }
                     wasVisible = true;
+                    setVisible(true);
                 }
             }
         }
 
         window.addEventListener("scroll", onGlobalScroll);
+        onGlobalScroll();
 
         return () => {
             window.removeEventListener("scroll", onGlobalScroll);
@@ -98,7 +102,7 @@ function PdfPage(props: {
     }, []);
 
     useEffect(() => {
-        renderPage();
+        if (visible) renderPage();
 
         return () => {
             if (tasks.current.renderTask) {
@@ -108,7 +112,7 @@ function PdfPage(props: {
                 tasks.current.renderTextTask.cancel();
             }
         };
-    }, [props.scale]);
+    }, [props.scale, visible]);
 
     return (
         <div className="relative border">
@@ -224,6 +228,32 @@ export default function App() {
         return <p>loading document...</p>;
     }
 
+    let pages = [];
+    for (let i = 0; i < document.numPages; i++) {
+        pages.push(
+            <PdfPage
+                onExitBottom={() => {
+                    // console.log("page", pageIndex + i + 1, "exited bottom");
+                }}
+                onExitTop={() => {
+                    setPageIndex((pageIndex) => pageIndex + 1);
+                    // console.log("page", pageIndex + i + 1, "exited top");
+                }}
+                onEnterBottom={() => {
+                    // console.log("page", pageIndex + i + 1, "entered bottom");
+                }}
+                onEnterTop={() => {
+                    setPageIndex((pageIndex) => pageIndex - 1);
+                    // console.log("page", pageIndex + i + 1, "entered top");
+                }}
+                scale={scale}
+                key={i}
+                document={document}
+                pageNumber={i + 1}
+            />
+        );
+    }
+
     return (
         <div>
             <div className="flex flex-row items-start justify-start bg-gray-700 min-h-full relative">
@@ -231,7 +261,9 @@ export default function App() {
                     <nav className="shadow-md">
                         <div className="px-3 py-3 ">
                             <div className="text-xl leading-4 text-green-300 font-bold font-mono">kokos</div>
-                            <div className="text-xs text-green-500">documentor</div>
+                            <div className="text-xs text-green-500">
+                                documentor ({pageIndex}/{document.numPages} pages)
+                            </div>
                         </div>
                     </nav>
                     <div className=" overflow-y-auto pb-10">
@@ -243,31 +275,13 @@ export default function App() {
                                 let newPageIndex = await document.getPageIndex(destination[0]);
                                 console.log("change index", destination);
                                 setPageIndex(newPageIndex);
+                                containerRef.current!.children[newPageIndex].scrollIntoView({});
                             }}
                         />
                     </div>
                 </div>
                 <div className="max-w-5xl bg-white flex-grow-0 flex-shrink" ref={containerRef}>
-                    {new Array(Math.min(document.numPages, 10)).fill(0).map((_, i) => (
-                        <PdfPage
-                            onExitBottom={() => {
-                                console.log("page", pageIndex + i + 1, "exited bottom");
-                            }}
-                            onExitTop={() => {
-                                console.log("page", pageIndex + i + 1, "exited top");
-                            }}
-                            onEnterBottom={() => {
-                                console.log("page", pageIndex + i + 1, "entered bottom");
-                            }}
-                            onEnterTop={() => {
-                                console.log("page", pageIndex + i + 1, "entered top");
-                            }}
-                            scale={scale}
-                            key={pageIndex + i + 1}
-                            document={document}
-                            pageNumber={pageIndex + i + 1}
-                        />
-                    ))}
+                    {pages}
                 </div>
             </div>
         </div>
