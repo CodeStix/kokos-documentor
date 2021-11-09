@@ -96,7 +96,8 @@ function PdfPage(props: {
                 }
 
                 for (let i = start; i <= end && i < textLayer.childNodes.length; i++) {
-                    (textLayer.children[i] as HTMLElement).style.backgroundColor = "red";
+                    let element = textLayer.children[i] as HTMLElement;
+                    element.classList.add("marked");
                 }
             }
         }

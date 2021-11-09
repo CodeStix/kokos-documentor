@@ -26,3 +26,23 @@ body, html, #root {
     transform-origin: 0% 0%;
     white-space: pre;
 }
+
+.marked {
+    animation: marked 2s infinite;
+}
+
+@keyframes marked {
+    0% {
+        background-color: orangered;
+        box-shadow: orangered 0 0 0 5px;
+    }
+    50% {
+        background-color: red;
+        box-shadow: red 0 0 0 8px;
+    }
+    100% {
+        background-color: orangered;
+        box-shadow: orangered 0 0 0 5px;
+    }
+}
+
