@@ -425,7 +425,7 @@ function AppContainer(props: { initialDocument: string; initialPageIndex?: numbe
                         <option className="text-black" value="/AMD64Volume5.pdf">
                             AMD Volume 5: 64-bit Media/Float instructions
                         </option>
-                        <option className="text-black" value="/multiboot.pdf">
+                        <option className="text-black" value="/Multiboot.pdf">
                             Multiboot Specification
                         </option>
                     </select>
