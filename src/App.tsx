@@ -22,10 +22,14 @@ function PdfPage(props: {
     const [visible, setVisible] = useState(props.pageIndex < 4);
     const textLayerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const tasks = useRef<{ renderTask: any; renderTextTask: any }>({ renderTask: null, renderTextTask: null });
+    const tasks = useRef<{ page: PDFPageProxy | null; renderTask: any; renderTextTask: any }>({ page: null, renderTask: null, renderTextTask: null });
 
     async function renderPage() {
-        let page = await props.document.getPage(props.pageIndex + 1);
+        if (!tasks.current!.page) {
+            tasks.current!.page = await props.document.getPage(props.pageIndex + 1);
+        }
+
+        let page = tasks.current.page!;
         let canvas = canvasRef.current!;
 
         let viewport = page.getViewport({ scale: props.scale });
@@ -41,8 +45,20 @@ function PdfPage(props: {
         await renderTask.promise;
         tasks.current.renderTask = null;
 
+        await renderText();
+    }
+
+    async function renderText() {
+        if (!tasks.current!.page) {
+            tasks.current!.page = await props.document.getPage(props.pageIndex + 1);
+        }
+
+        let page = tasks.current.page!;
+        let canvas = canvasRef.current!;
         let textContent = await page.getTextContent();
         let textLayer = textLayerRef.current!;
+
+        let viewport = page.getViewport({ scale: props.scale });
 
         textLayer.style.left = canvas.offsetLeft + "px";
         textLayer.style.top = canvas.offsetTop - 2 + "px";
@@ -301,6 +317,7 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
 
             if (selection.focusOffset! - selection.anchorOffset! < 2) {
                 // Selection too short
+                setSelection(undefined);
                 return;
             }
 
