@@ -31,10 +31,16 @@ function PdfPage(props: {
 
         let page = tasks.current.page!;
         let canvas = canvasRef.current!;
+        let textLayer = textLayerRef.current!;
 
         let viewport = page.getViewport({ scale: props.scale });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+
+        textLayer.style.left = canvas.offsetLeft + "px";
+        textLayer.style.top = canvas.offsetTop - 2 + "px";
+        textLayer.style.height = canvas.offsetHeight + "px";
+        textLayer.style.width = canvas.offsetWidth + "px";
 
         let renderTask = page.render({
             viewport,
@@ -44,8 +50,6 @@ function PdfPage(props: {
         tasks.current.renderTask = renderTask;
         await renderTask.promise;
         tasks.current.renderTask = null;
-
-        await renderText();
     }
 
     async function renderText() {
@@ -54,16 +58,9 @@ function PdfPage(props: {
         }
 
         let page = tasks.current.page!;
-        let canvas = canvasRef.current!;
         let textContent = await page.getTextContent();
         let textLayer = textLayerRef.current!;
-
         let viewport = page.getViewport({ scale: props.scale });
-
-        textLayer.style.left = canvas.offsetLeft + "px";
-        textLayer.style.top = canvas.offsetTop - 2 + "px";
-        textLayer.style.height = canvas.offsetHeight + "px";
-        textLayer.style.width = canvas.offsetWidth + "px";
 
         while (textLayer.firstChild) {
             textLayer.removeChild(textLayer.firstChild);
@@ -151,11 +148,18 @@ function PdfPage(props: {
             if (tasks.current.renderTask) {
                 tasks.current.renderTask.cancel();
             }
+        };
+    }, [props.scale, visible]);
+
+    useEffect(() => {
+        if (visible) renderText();
+
+        return () => {
             if (tasks.current.renderTextTask) {
                 tasks.current.renderTextTask.cancel();
             }
         };
-    }, [props.scale, visible, props.selection]);
+    }, [props.selection, props.scale, visible]);
 
     return (
         <div className="relative border bg-white">
