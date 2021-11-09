@@ -11,6 +11,7 @@ function PdfPage(props: {
     document: PDFDocumentProxy;
     pageNumber: number;
     scale: number;
+    selection?: [startIndex: number, endIndex: number];
     onExitTop: () => void;
     onExitBottom: () => void;
     onEnterTop: () => void;
@@ -60,6 +61,12 @@ function PdfPage(props: {
         tasks.current.renderTextTask = renderTextTask;
         await renderTextTask.promise;
         tasks.current.renderTextTask = null;
+
+        if (props.selection) {
+            for (let i = props.selection![0]; i <= props.selection![1]; i++) {
+                (textLayer.children[i] as HTMLElement).style.backgroundColor = "red";
+            }
+        }
     }
 
     useEffect(() => {
@@ -112,7 +119,7 @@ function PdfPage(props: {
                 tasks.current.renderTextTask.cancel();
             }
         };
-    }, [props.scale, visible]);
+    }, [props.scale, visible, props.selection]);
 
     return (
         <div className="relative border bg-white">
@@ -211,7 +218,7 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem, 
 export default function App() {
     let hash = location.hash.slice(1);
     let version,
-        documentName = "amd64volume2",
+        documentName = "amd64volume2.pdf",
         pageIndex = 0;
     if (hash) {
         try {
@@ -236,7 +243,7 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
         document?.cleanup();
         setDocument(undefined);
 
-        let path = "/documents/" + documentName + ".pdf";
+        let path = "/documents/" + documentName;
         let res = await pdf.getDocument(path).promise;
         console.log("loaded pdf from", documentName);
         setDocument(res);
@@ -264,10 +271,36 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
             }
         }
 
+        function onMouseUp() {
+            let selection = window.getSelection();
+            if (!selection || !selection.anchorNode || !selection.focusNode) return;
+
+            let anchor = selection.anchorNode.parentElement!;
+            let focus = selection.focusNode.parentElement!;
+
+            let anchorTextLayer = anchor.parentElement!;
+            let focusTextLayer = focus.parentElement!;
+
+            if (!anchorTextLayer.classList.contains("text-layer") || !focusTextLayer.classList.contains("text-layer")) {
+                // Selection is not in text layer
+                return;
+            }
+
+            let anchorPageIndex = Array.from(containerRef.current!.children).indexOf(anchorTextLayer.parentElement!);
+            let focusPageIndex = Array.from(containerRef.current!.children).indexOf(focusTextLayer.parentElement!);
+
+            let anchorIndex = Array.from(anchorTextLayer.children).indexOf(anchor);
+            let focusIndex = Array.from(focusTextLayer.children).indexOf(focus);
+
+            console.log({ anchorPageIndex, focusPageIndex, anchorIndex, focusIndex });
+        }
+
         window.addEventListener("wheel", onScroll, { passive: false });
+        window.addEventListener("mouseup", onMouseUp);
 
         return () => {
             window.removeEventListener("wheel", onScroll);
+            window.removeEventListener("mouseup", onMouseUp);
         };
     }, []);
 
@@ -276,6 +309,7 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
         for (let i = 0; i < document.numPages; i++) {
             pages.push(
                 <PdfPage
+                    selection={[0, 100]}
                     onExitBottom={() => {
                         // console.log("page", pageIndex + i + 1, "exited bottom");
                     }}
