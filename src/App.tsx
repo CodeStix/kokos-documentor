@@ -187,7 +187,6 @@ function PdfChildTree(props: {
     const [pageNumber, setPageNumber] = useState<number>();
 
     async function getPageInfo() {
-        console.log(props.item);
         let destination = (await props.document.getDestination(String(props.item.dest))) as RefProxy[];
         if (!destination || destination.length <= 0) return;
         await new Promise((res) => requestAnimationFrame(res));
@@ -270,14 +269,16 @@ export default function App() {
         }
     }
 
-    return <AppContainer initialDocument={documentName} initialPageNumber={pageIndex} selection={selection} />;
+    console.log({ pageIndex });
+
+    return <AppContainer initialDocument={documentName} initialPageIndex={pageIndex} selection={selection} />;
 }
 
 // See http://localhost:3000/amd64volume2.pdf/4.10.2_Accessing_Stack_Segments
-function AppContainer(props: { initialDocument: string; initialPageNumber?: number; selection?: MarkedSelection }) {
+function AppContainer(props: { initialDocument: string; initialPageIndex?: number; selection?: MarkedSelection }) {
     const [documentName, setDocumentName] = useState(props.initialDocument);
     const [document, setDocument] = useState<PDFDocumentProxy>();
-    const [pageIndex, setPageIndex] = useState(props.initialPageNumber || 0);
+    const [pageIndex, setPageIndex] = useState(props.initialPageIndex || 0);
     const [scale, setScale] = useState(1.2);
     const [selection, setSelection] = useState<MarkedSelection | undefined>(props.selection);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -409,11 +410,20 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
                             setPageIndex(0);
                             setDocumentName(ev.target.value);
                         }}>
-                        <option className="text-black" value="/amd64volume2.pdf">
-                            AMD Volume 2
+                        <option className="text-black" value="/AMD64Volume1.pdf">
+                            AMD Volume 1: Application programming
                         </option>
-                        <option className="text-black" value="/amd64volume2b.pdf">
-                            AMD Volume 2 B
+                        <option className="text-black" value="/AMD64Volume2.pdf">
+                            AMD Volume 2: System programming
+                        </option>
+                        <option className="text-black" value="/AMD64Volume3.pdf">
+                            AMD Volume 3: Instructions
+                        </option>
+                        <option className="text-black" value="/AMD64Volume4.pdf">
+                            AMD Volume 4: 128/256-bit Media instructions
+                        </option>
+                        <option className="text-black" value="/AMD64Volume5.pdf">
+                            AMD Volume 5: 64-bit Media/Float instructions
                         </option>
                         <option className="text-black" value="/multiboot.pdf">
                             Multiboot Specification
@@ -425,7 +435,6 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
                         <PdfTree
                             document={document}
                             onClick={async (item, path) => {
-                                console.log("item.dest", String(item.dest));
                                 let destination = (await document.getDestination(String(item.dest))) as RefProxy[];
                                 if (!destination || destination.length <= 0) return;
                                 let newPageIndex = await document.getPageIndex(destination[0]);
