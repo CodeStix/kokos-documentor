@@ -7,23 +7,25 @@ import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 
 pdf.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
 
+type MarkedSelection = [startPage: number, startIndex: number, endPage: number, endIndex: number];
+
 function PdfPage(props: {
     document: PDFDocumentProxy;
-    pageNumber: number;
+    pageIndex: number;
     scale: number;
-    selection?: [startIndex: number, endIndex: number];
+    selection?: MarkedSelection;
     onExitTop: () => void;
     onExitBottom: () => void;
     onEnterTop: () => void;
     onEnterBottom: () => void;
 }) {
-    const [visible, setVisible] = useState(props.pageNumber < 4);
+    const [visible, setVisible] = useState(props.pageIndex < 4);
     const textLayerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const tasks = useRef<{ renderTask: any; renderTextTask: any }>({ renderTask: null, renderTextTask: null });
 
     async function renderPage() {
-        let page = await props.document.getPage(props.pageNumber);
+        let page = await props.document.getPage(props.pageIndex + 1);
         let canvas = canvasRef.current!;
 
         let viewport = page.getViewport({ scale: props.scale });
@@ -63,14 +65,32 @@ function PdfPage(props: {
         tasks.current.renderTextTask = null;
 
         if (props.selection) {
-            for (let i = props.selection![0]; i <= props.selection![1]; i++) {
-                (textLayer.children[i] as HTMLElement).style.backgroundColor = "red";
+            let [startPage, startIndex, endPage, endIndex] = props.selection;
+            if (startPage == props.pageIndex || endIndex == props.pageIndex) {
+                let start = 0;
+                let end = 0;
+
+                if (startPage == props.pageIndex) {
+                    start = startIndex;
+                } else {
+                    start = 0;
+                }
+
+                if (endPage == props.pageIndex) {
+                    end = endIndex;
+                } else {
+                    end = 99999;
+                }
+
+                for (let i = start; i <= end && i < textLayer.childNodes.length; i++) {
+                    (textLayer.children[i] as HTMLElement).style.backgroundColor = "red";
+                }
             }
         }
     }
 
     useEffect(() => {
-        let wasVisible = props.pageNumber < 4;
+        let wasVisible = props.pageIndex < 4;
         function onGlobalScroll() {
             let canvas = canvasRef.current!;
             let rect = canvas.getBoundingClientRect();
@@ -217,26 +237,28 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem, 
 
 export default function App() {
     let hash = location.hash.slice(1);
-    let version,
+    let version = null,
         documentName = "amd64volume2.pdf",
-        pageIndex = 0;
+        pageIndex = 0,
+        selection = null;
     if (hash) {
         try {
-            [version, documentName, pageIndex] = JSON.parse(atob(hash));
+            [version, documentName, pageIndex, selection] = JSON.parse(atob(hash));
         } catch (ex) {
             console.error("could not decode hash", hash);
         }
     }
 
-    return <AppContainer initialDocument={documentName} initialPageNumber={pageIndex} />;
+    return <AppContainer initialDocument={documentName} initialPageNumber={pageIndex} selection={selection} />;
 }
 
 // See http://localhost:3000/amd64volume2.pdf/4.10.2_Accessing_Stack_Segments
-function AppContainer(props: { initialDocument: string; initialPageNumber?: number }) {
+function AppContainer(props: { initialDocument: string; initialPageNumber?: number; selection?: MarkedSelection }) {
     const [documentName, setDocumentName] = useState(props.initialDocument);
     const [document, setDocument] = useState<PDFDocumentProxy>();
     const [pageIndex, setPageIndex] = useState(props.initialPageNumber || 0);
     const [scale, setScale] = useState(1.2);
+    const [selection, setSelection] = useState<MarkedSelection | undefined>(props.selection);
     const containerRef = useRef<HTMLDivElement>(null);
 
     async function loadPdf(documentName: string) {
@@ -256,8 +278,8 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
     }, [documentName]);
 
     useEffect(() => {
-        location.hash = btoa(JSON.stringify([0, documentName, pageIndex]));
-    }, [pageIndex]);
+        location.hash = btoa(JSON.stringify(selection ? [0, documentName, pageIndex, selection] : [0, documentName, pageIndex]));
+    }, [pageIndex, selection]);
 
     useEffect(() => {
         function onScroll(ev: WheelEvent) {
@@ -273,7 +295,14 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
 
         function onMouseUp() {
             let selection = window.getSelection();
-            if (!selection || !selection.anchorNode || !selection.focusNode) return;
+            if (!selection || !selection.anchorNode || !selection.focusNode) {
+                return;
+            }
+
+            if (selection.focusOffset! - selection.anchorOffset! < 2) {
+                // Selection too short
+                return;
+            }
 
             let anchor = selection.anchorNode.parentElement!;
             let focus = selection.focusNode.parentElement!;
@@ -292,7 +321,7 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
             let anchorIndex = Array.from(anchorTextLayer.children).indexOf(anchor);
             let focusIndex = Array.from(focusTextLayer.children).indexOf(focus);
 
-            console.log({ anchorPageIndex, focusPageIndex, anchorIndex, focusIndex });
+            setSelection([anchorPageIndex, anchorIndex, focusPageIndex, focusIndex]);
         }
 
         window.addEventListener("wheel", onScroll, { passive: false });
@@ -309,7 +338,6 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
         for (let i = 0; i < document.numPages; i++) {
             pages.push(
                 <PdfPage
-                    selection={[0, 100]}
                     onExitBottom={() => {
                         // console.log("page", pageIndex + i + 1, "exited bottom");
                     }}
@@ -327,7 +355,8 @@ function AppContainer(props: { initialDocument: string; initialPageNumber?: numb
                     scale={scale}
                     key={i}
                     document={document}
-                    pageNumber={i + 1}
+                    selection={selection}
+                    pageIndex={i}
                 />
             );
         }
