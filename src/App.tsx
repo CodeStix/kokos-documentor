@@ -128,11 +128,18 @@ interface TreeItem {
     dest: string | null | any[];
 }
 
-function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocumentProxy; onClick: (item: TreeItem) => void }) {
+function PdfChildTree(props: {
+    item: TreeItem;
+    level: number;
+    document: PDFDocumentProxy;
+    onClick: (item: TreeItem, path: string[]) => void;
+    path: string[];
+}) {
     const [shown, setShown] = useState(false);
     const [pageNumber, setPageNumber] = useState<number>();
 
     async function getPageInfo() {
+        console.log(props.item);
         let destination = (await props.document.getDestination(String(props.item.dest))) as RefProxy[];
         if (!destination || destination.length <= 0) return;
         await new Promise((res) => requestAnimationFrame(res));
@@ -150,7 +157,7 @@ function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocum
                 className="flex flex-row flex-wrap text-white cursor-pointer hover:bg-blue-500 hover:border-transparent px-2 py-0.5 border-b border-gray-900 border-dotted hover:rounded-md rounded-none"
                 onClick={() => {
                     setShown(!shown);
-                    props.onClick(props.item);
+                    props.onClick(props.item, props.path);
                 }}
                 style={{ fontWeight: props.level === 0 ? "bold" : undefined, marginLeft: props.level * 10 + "px" }}>
                 <span className="w-5">
@@ -164,13 +171,20 @@ function PdfChildTree(props: { item: TreeItem; level: number; document: PDFDocum
             {shown &&
                 props.item.items.length > 0 &&
                 props.item.items.map((item, i) => (
-                    <PdfChildTree document={props.document} onClick={props.onClick} key={i} level={props.level + 1} item={item} />
+                    <PdfChildTree
+                        document={props.document}
+                        onClick={props.onClick}
+                        key={i}
+                        level={props.level + 1}
+                        item={item}
+                        path={[...props.path, item.title]}
+                    />
                 ))}
         </div>
     );
 }
 
-function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem) => void }) {
+function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem, path: string[]) => void }) {
     const [items, setItems] = useState<TreeItem[]>([]);
 
     async function loadTree() {
@@ -185,7 +199,7 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem) 
     return (
         <div className="p-3  overflow-y-auto">
             {items.map((item, i) => (
-                <PdfChildTree document={props.document} onClick={props.onClick} key={i} level={0} item={item} />
+                <PdfChildTree document={props.document} onClick={props.onClick} key={i} level={0} item={item} path={[item.title]} />
             ))}
         </div>
     );
@@ -195,25 +209,48 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem) 
 // https://stackoverflow.com/questions/33063213/pdf-js-with-text-selection
 
 export default function App() {
-    const [documentName, setDocumentName] = useState("/amd64volume2.pdf");
+    let hash = location.hash.slice(1);
+    let version,
+        documentName = "amd64volume2",
+        pageIndex = 0;
+    if (hash) {
+        try {
+            [version, documentName, pageIndex] = JSON.parse(atob(hash));
+        } catch (ex) {
+            console.error("could not decode hash", hash);
+        }
+    }
+
+    return <AppContainer initialDocument={documentName} initialPageNumber={pageIndex} />;
+}
+
+// See http://localhost:3000/amd64volume2.pdf/4.10.2_Accessing_Stack_Segments
+function AppContainer(props: { initialDocument: string; initialPageNumber?: number }) {
+    const [documentName, setDocumentName] = useState(props.initialDocument);
     const [document, setDocument] = useState<PDFDocumentProxy>();
-    const [pageIndex, setPageIndex] = useState(0);
+    const [pageIndex, setPageIndex] = useState(props.initialPageNumber || 0);
     const [scale, setScale] = useState(1.2);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    async function loadPdf(path: string) {
-        console.log("loading pdf from", path);
+    async function loadPdf(documentName: string) {
         document?.cleanup();
         setDocument(undefined);
 
+        let path = "/documents/" + documentName + ".pdf";
         let res = await pdf.getDocument(path).promise;
-        console.log("loaded pdf from", path);
+        console.log("loaded pdf from", documentName);
         setDocument(res);
+
+        requestAnimationFrame(() => containerRef.current!.children[pageIndex].scrollIntoView({}));
     }
 
     useEffect(() => {
         if (documentName) loadPdf(documentName);
     }, [documentName]);
+
+    useEffect(() => {
+        location.hash = btoa(JSON.stringify([0, documentName, pageIndex]));
+    }, [pageIndex]);
 
     useEffect(() => {
         function onScroll(ev: WheelEvent) {
@@ -243,14 +280,14 @@ export default function App() {
                         // console.log("page", pageIndex + i + 1, "exited bottom");
                     }}
                     onExitTop={() => {
-                        setPageIndex((pageIndex) => pageIndex + 1);
+                        setPageIndex(i + 1);
                         // console.log("page", pageIndex + i + 1, "exited top");
                     }}
                     onEnterBottom={() => {
                         // console.log("page", pageIndex + i + 1, "entered bottom");
                     }}
                     onEnterTop={() => {
-                        setPageIndex((pageIndex) => pageIndex - 1);
+                        setPageIndex(i);
                         // console.log("page", pageIndex + i + 1, "entered top");
                     }}
                     scale={scale}
@@ -267,15 +304,15 @@ export default function App() {
             <div className="sticky top-0 max-h-screen flex flex-col">
                 <nav className="shadow-md flex p-3">
                     <div>
-                        <div className="text-xl leading-4 text-green-300 font-bold font-mono">cocos</div>
+                        <div className="text-xl leading-4 text-green-300 font-bold font-mono">kokos</div>
                         <div className="text-xs text-green-500">
                             {document ? (
                                 <span>
-                                    documentor ({pageIndex}/{document.numPages} pages, {scale})
+                                    documentor (page {pageIndex + 1}/{document.numPages})
                                 </span>
                             ) : (
                                 <span>
-                                    Loading <code>{documentName}</code>...
+                                    Loading <code>{documentName}</code>
                                 </span>
                             )}
                         </div>
@@ -290,6 +327,9 @@ export default function App() {
                         <option className="text-black" value="/amd64volume2.pdf">
                             AMD Volume 2
                         </option>
+                        <option className="text-black" value="/amd64volume2b.pdf">
+                            AMD Volume 2 B
+                        </option>
                         <option className="text-black" value="/multiboot.pdf">
                             Multiboot Specification
                         </option>
@@ -299,11 +339,11 @@ export default function App() {
                     <div className=" overflow-y-auto pb-10">
                         <PdfTree
                             document={document}
-                            onClick={async (item) => {
+                            onClick={async (item, path) => {
+                                console.log("item.dest", String(item.dest));
                                 let destination = (await document.getDestination(String(item.dest))) as RefProxy[];
                                 if (!destination || destination.length <= 0) return;
                                 let newPageIndex = await document.getPageIndex(destination[0]);
-                                console.log("change index", destination);
                                 setPageIndex(newPageIndex);
                                 containerRef.current!.children[newPageIndex].scrollIntoView({});
                             }}
