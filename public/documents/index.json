@@ -1,11 +1,11 @@
 {
     "items": [
         {
-            "name": "AMD Volume 1: Application programming",
+            "name": "AMD Volume 1: Application Programming",
             "path": "AMD64Volume1.pdf"
         },
         {
-            "name": "AMD Volume 2: System programming",
+            "name": "AMD Volume 2: System Programming",
             "path": "AMD64Volume2.pdf"
         },
         {
@@ -13,16 +13,52 @@
             "path": "AMD64Volume3.pdf"
         },
         {
-            "name": "AMD Volume 4: 128/256-bit Media instructions",
+            "name": "AMD Volume 4: 128/256-bit Instructions",
             "path": "AMD64Volume4.pdf"
         },
         {
-            "name": "AMD Volume 5: 64-bit Media/Float instructions",
+            "name": "AMD Volume 5: 64-bit Instructions",
             "path": "AMD64Volume5.pdf"
         },
         {
             "name": "Multiboot Specification",
             "path": "Multiboot.pdf"
+        },
+        {
+            "name": "Intel Volume1: Basic Architecture",
+            "path": "IntelVolume1.pdf"
+        },
+        {
+            "name": "Intel Volume 2A: Instructions A-L",
+            "path": "IntelVolume2A.pdf"
+        },
+        {
+            "name": "Intel Volume 2B: Instructions M-U",
+            "path": "IntelVolume2B.pdf"
+        },
+        {
+            "name": "Intel Volume 2C: Instructions V-Z",
+            "path": "IntelVolume2C.pdf"
+        },
+        {
+            "name": "Intel Volume 2D: Instruction Format",
+            "path": "IntelVolume2D.pdf"
+        },
+        {
+            "name": "Intel Volume 3A: System Programming 1",
+            "path": "IntelVolume3A.pdf"
+        },
+        {
+            "name": "Intel Volume 3B: System Programming 2",
+            "path": "IntelVolume3B.pdf"
+        },
+        {
+            "name": "Intel Volume 3C: System Programming 3",
+            "path": "IntelVolume3C.pdf"
+        },
+        {
+            "name": "Intel Volume 3D: System Programming 4",
+            "path": "IntelVolume3D.pdf"
         }
     ]
 }
