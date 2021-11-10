@@ -274,8 +274,16 @@ export default function App() {
     return <AppContainer initialDocument={documentName} initialPageIndex={pageIndex} selection={selection} />;
 }
 
+interface DocumentIndex {
+    items: {
+        path: string;
+        name: string;
+    }[];
+}
+
 // See http://localhost:3000/amd64volume2.pdf/4.10.2_Accessing_Stack_Segments
 function AppContainer(props: { initialDocument: string; initialPageIndex?: number; selection?: MarkedSelection }) {
+    const [documents, setDocuments] = useState<DocumentIndex>();
     const [documentName, setDocumentName] = useState(props.initialDocument);
     const [document, setDocument] = useState<PDFDocumentProxy>();
     const [pageIndex, setPageIndex] = useState(props.initialPageIndex || 0);
@@ -347,6 +355,16 @@ function AppContainer(props: { initialDocument: string; initialPageIndex?: numbe
             setSelection([anchorPageIndex, anchorIndex, focusPageIndex, focusIndex]);
         }
 
+        async function fetchDocuments() {
+            let res = await fetch("/documents/index.json", {
+                method: "GET",
+            });
+            if (!res.ok) return;
+            setDocuments(await res.json());
+        }
+
+        fetchDocuments();
+
         window.addEventListener("wheel", onScroll, { passive: false });
         window.addEventListener("mouseup", onMouseUp);
 
@@ -410,24 +428,11 @@ function AppContainer(props: { initialDocument: string; initialPageIndex?: numbe
                             setPageIndex(0);
                             setDocumentName(ev.target.value);
                         }}>
-                        <option className="text-black" value="/AMD64Volume1.pdf">
-                            AMD Volume 1: Application programming
-                        </option>
-                        <option className="text-black" value="/AMD64Volume2.pdf">
-                            AMD Volume 2: System programming
-                        </option>
-                        <option className="text-black" value="/AMD64Volume3.pdf">
-                            AMD Volume 3: Instructions
-                        </option>
-                        <option className="text-black" value="/AMD64Volume4.pdf">
-                            AMD Volume 4: 128/256-bit Media instructions
-                        </option>
-                        <option className="text-black" value="/AMD64Volume5.pdf">
-                            AMD Volume 5: 64-bit Media/Float instructions
-                        </option>
-                        <option className="text-black" value="/Multiboot.pdf">
-                            Multiboot Specification
-                        </option>
+                        {documents?.items.map((item, index) => (
+                            <option className="text-black" value={item.path} key={item.path}>
+                                {item.name}
+                            </option>
+                        ))}
                     </select>
                 </nav>
                 {document && (

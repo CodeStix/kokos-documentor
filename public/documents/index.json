@@ -1,0 +1,28 @@
+{
+    "items": [
+        {
+            "name": "AMD Volume 1: Application programming",
+            "path": "AMD64Volume1.pdf"
+        },
+        {
+            "name": "AMD Volume 2: System programming",
+            "path": "AMD64Volume2.pdf"
+        },
+        {
+            "name": "AMD Volume 3: Instructions",
+            "path": "AMD64Volume3.pdf"
+        },
+        {
+            "name": "AMD Volume 4: 128/256-bit Media instructions",
+            "path": "AMD64Volume4.pdf"
+        },
+        {
+            "name": "AMD Volume 5: 64-bit Media/Float instructions",
+            "path": "AMD64Volume5.pdf"
+        },
+        {
+            "name": "Multiboot Specification",
+            "path": "Multiboot.pdf"
+        }
+    ]
+}
