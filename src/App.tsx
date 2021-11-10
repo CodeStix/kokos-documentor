@@ -258,7 +258,7 @@ function PdfTree(props: { document: PDFDocumentProxy; onClick: (item: TreeItem, 
 export default function App() {
     let hash = location.hash.slice(1);
     let version = null,
-        documentName = "amd64volume2.pdf",
+        documentName = "AMD64Volume2.pdf",
         pageIndex = 0,
         selection = null;
     if (hash) {
