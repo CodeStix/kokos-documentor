@@ -59,6 +59,10 @@
         {
             "name": "Intel Volume 3D: System Programming 4",
             "path": "IntelVolume3D.pdf"
+        },
+        {
+            "name": "ACPI Specification",
+            "path": "ACPI.pdf"
         }
     ]
 }
