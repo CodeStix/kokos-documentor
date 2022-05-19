@@ -63,6 +63,27 @@
         {
             "name": "ACPI Specification",
             "path": "ACPI.pdf"
+        },
+        
+        {
+            "name": "DW1000: Maximizing range",
+            "path": "aps017_max_range_in_dw1000_systems.pdf"
+        },
+        {
+            "name": "DW1000 Datasheet",
+            "path": "DW1000 Data Sheet.pdf"
+        },
+        {
+            "name": "DW1000 User Manual",
+            "path": "dw1000_user_manual_2.11.pdf"
+        },
+        {
+            "name": "DWM1000 Datasheet",
+            "path": "DWM1000 Data Sheet.pdf"
+        },
+        {
+            "name": "DWM1001 Firmware API Guide",
+            "path": "DWM1001  Firmware API Guide.pdf"
         }
     ]
 }
